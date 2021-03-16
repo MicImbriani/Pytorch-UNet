@@ -2,6 +2,9 @@ import argparse
 import logging
 import os
 import sys
+from os import listdir
+from os.path import splitext
+from joblib import Parallel, delayed
 
 import numpy as np
 import torch
@@ -16,19 +19,39 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import BasicDataset
 from torch.utils.data import DataLoader, random_split
 
-dir_img = 'data/imgs/'
-dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints/'
+dir_img = 'D:/Users/imbrm/ISIC_2017-2/Train/'
+dir_mask = 'D:/Users/imbrm/ISIC_2017-2/Train_GT_masks/'
+dir_checkpoint = 'D:/Users/imbrm/ISIC_2017-2/checkpoints/'
 
+def del_superpixels(input_path, jobs):
+    """Deletes the superpixels images of the skin lesions.
+
+    Args:
+        input_path (string): Path of the folder containing all the images.
+        jobs (string): Number of job for parallelisation.
+    """
+    # Store the IDs of all the _superpixel images in a list.
+    images = [
+        splitext(file)[0]
+        for file in listdir(input_path)
+        if "_superpixels" in splitext(file)[0]
+    ]
+    print("Deleting Superpixel Images:")
+    Parallel(n_jobs=jobs)(
+        delayed(os.remove)(str(input_path + "/" + str(image + ".png")))
+        for image in tqdm(images)
+    )
 
 def train_net(net,
               device,
-              epochs=5,
+              epochs=1,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
               save_cp=True,
               img_scale=0.5):
+
+    del_superpixels(dir_img, 10)
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale)
     n_val = int(len(dataset) * val_percent)
